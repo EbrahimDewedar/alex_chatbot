@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django specific
+db.sqlite3
+
+# Environment
+.env
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
