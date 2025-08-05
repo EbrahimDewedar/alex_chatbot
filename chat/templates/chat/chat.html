@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ITI Alex Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 20px; }
+        #chat-box { width: 100%; max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; }
+        .message { padding: 8px; margin: 5px 0; border-radius: 5px; }
+        .user { background: #d1e7dd; text-align: right; }
+        .bot { background: #f8d7da; text-align: left; }
+        #input-section { display: flex; margin-top: 15px; }
+        #message-input { flex: 1; padding: 10px; }
+        #send-btn { padding: 10px; background: #0d6efd; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="chat-box">
+        <h2>ITI Alex Chatbot</h2>
+        <div id="messages"></div>
+        <div id="input-section">
+            <input type="text" id="message-input" placeholder="Ask me something..." />
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const messagesDiv = document.getElementById("messages");
+        const input = document.getElementById("message-input");
+        const sendBtn = document.getElementById("send-btn");
+
+        sendBtn.addEventListener("click", sendMessage);
+
+        async function sendMessage() {
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage(message, "user");
+            input.value = "";
+
+            try {
+                const response = await fetch("/chat/api/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                if (data.response) {
+                    addMessage(data.response, "bot");
+                } else if (data.error) {
+                    addMessage("Error: " + data.error, "bot");
+                }
+            } catch (error) {
+                addMessage("Error sending request", "bot");
+            }
+        }
+
+        function addMessage(text, sender) {
+            const div = document.createElement("div");
+            div.className = `message ${sender}`;
+            div.textContent = text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
