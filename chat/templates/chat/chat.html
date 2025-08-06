@@ -1,68 +1,388 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ITI Alex Chatbot</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ITI Alex Chatbot{% endblock %}</title>
+    {% block extra_css %}
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 20px; }
-        #chat-box { width: 100%; max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; }
-        .message { padding: 8px; margin: 5px 0; border-radius: 5px; }
-        .user { background: #d1e7dd; text-align: right; }
-        .bot { background: #f8d7da; text-align: left; }
-        #input-section { display: flex; margin-top: 15px; }
-        #message-input { flex: 1; padding: 10px; }
-        #send-btn { padding: 10px; background: #0d6efd; color: white; border: none; cursor: pointer; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f4f4f4; 
+            margin: 20px; 
+        }
+        
+        #chat-box { 
+            width: 100%; 
+            max-width: 600px; 
+            margin: auto; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .message { 
+            padding: 8px; 
+            margin: 5px 0; 
+            border-radius: 5px; 
+        }
+        
+        .user { 
+            background: #d1e7dd; 
+            text-align: right; 
+        }
+        
+        .bot { 
+            background: #f8d7da; 
+            text-align: left; 
+        }
+        
+        #messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        
+        #input-section { 
+            display: flex; 
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        #message-input { 
+            flex: 1; 
+            padding: 10px; 
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #image-input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #send-btn, #send-image-btn { 
+            padding: 10px 15px; 
+            background: #0d6efd; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #send-btn:hover, #send-image-btn:hover {
+            background: #0b5ed7;
+        }
+        
+        #send-btn:disabled, #send-image-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .upload-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
     </style>
+    {% endblock %}
 </head>
 <body>
+    {% block content %}
     <div id="chat-box">
-        <h2>ITI Alex Chatbot</h2>
-        <div id="messages"></div>
+        <h2>{% block header %}ITI Alex Chatbot{% endblock %}</h2>
+        
+        <div id="messages">
+            <div class="message bot">
+                Welcome! I can help you with text conversations and extract text from images. 
+                You can type a message or upload an image containing text.
+            </div>
+        </div>
+        
         <div id="input-section">
-            <input type="text" id="message-input" placeholder="Ask me something..." />
-            <button id="send-btn">Send</button>
+            <!-- Text input row -->
+            <div class="input-row">
+                <input 
+                    type="text" 
+                    id="message-input" 
+                    placeholder="Ask me something..." 
+                    maxlength="1000"
+                />
+                <button id="send-btn">Send</button>
+            </div>
+            
+            <!-- Image input row -->
+            <div class="input-row">
+                <input 
+                    type="file" 
+                    id="image-input" 
+                    accept="image/*"
+                    title="Upload an image to extract text from it"
+                />
+                <button id="send-image-btn">Extract Text</button>
+            </div>
+            
+            <div class="upload-info">
+                Upload JPG, PNG, or other image formats containing text
+            </div>
+            
+            <!-- Image preview container -->
+            <div id="image-preview"></div>
         </div>
     </div>
+    {% endblock %}
 
+    {% block extra_js %}
     <script>
+        // Django CSRF token handling
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+        
+        // DOM elements
         const messagesDiv = document.getElementById("messages");
         const input = document.getElementById("message-input");
         const sendBtn = document.getElementById("send-btn");
+        const imageInput = document.getElementById("image-input");
+        const sendImageBtn = document.getElementById("send-image-btn");
+        const imagePreview = document.getElementById("image-preview");
+        
+        let selectedFile = null;
 
+        // Event listeners
         sendBtn.addEventListener("click", sendMessage);
+        sendImageBtn.addEventListener("click", sendImage);
+        imageInput.addEventListener("change", handleImageSelect);
+        
+        // Enter key support for text input
+        input.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
 
+        // Handle image selection and preview
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            selectedFile = file;
+            
+            if (file) {
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    addMessage("Error: Image size must be less than 5MB", "bot", true);
+                    imageInput.value = '';
+                    selectedFile = null;
+                    return;
+                }
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.innerHTML = `
+                        <img src="${e.target.result}" alt="Image preview" class="image-preview">
+                        <div style="font-size: 12px; color: #666;">
+                            Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.innerHTML = '';
+            }
+        }
+
+        // Send text message
         async function sendMessage() {
             const message = input.value.trim();
             if (!message) return;
 
             addMessage(message, "user");
             input.value = "";
+            
+            const loadingMsg = addLoadingMessage();
+            setButtonsState(false);
 
             try {
-                const response = await fetch("/chat/api/", {
+                const response = await fetch("{% url 'chat:chat_api' %}", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message })
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrftoken
+                    },
+                    body: JSON.stringify({ message: message })
                 });
 
                 const data = await response.json();
+                removeLoadingMessage(loadingMsg);
+                
                 if (data.response) {
                     addMessage(data.response, "bot");
                 } else if (data.error) {
-                    addMessage("Error: " + data.error, "bot");
+                    addMessage("Error: " + data.error, "bot", true);
+                } else {
+                    addMessage("Sorry, I encountered an unexpected error.", "bot", true);
                 }
             } catch (error) {
-                addMessage("Error sending request", "bot");
+                removeLoadingMessage(loadingMsg);
+                addMessage("Network error. Please check your connection and try again.", "bot", true);
+            } finally {
+                setButtonsState(true);
+            }
+        }
+        
+        // Send image for OCR
+        async function sendImage() {
+            if (!selectedFile) {
+                addMessage("Please select an image first", "bot", true);
+                return;
+            }
+            
+            const additionalMessage = input.value.trim();
+            
+            // Show what we're processing
+            if (additionalMessage) {
+                addMessage(`[Image uploaded] ${additionalMessage}`, "user");
+                input.value = "";
+            } else {
+                addMessage("[Image uploaded for text extraction]", "user");
+            }
+            
+            const loadingMsg = addLoadingMessage();
+            setButtonsState(false);
+
+            try {
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                if (additionalMessage) {
+                    formData.append('message', additionalMessage);
+                }
+
+                const response = await fetch("{% url 'chat:chat_api' %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrftoken
+                        // Note: Don't set Content-Type for FormData, browser will set it automatically
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                removeLoadingMessage(loadingMsg);
+                
+                if (data.response) {
+                    addMessage(data.response, "bot");
+                } else if (data.error) {
+                    addMessage("Error: " + data.error, "bot", true);
+                } else {
+                    addMessage("Sorry, I couldn't process the image.", "bot", true);
+                }
+                
+                // Clear image selection
+                clearImageSelection();
+                
+            } catch (error) {
+                removeLoadingMessage(loadingMsg);
+                addMessage("Network error during image processing. Please try again.", "bot", true);
+            } finally {
+                setButtonsState(true);
             }
         }
 
-        function addMessage(text, sender) {
+        // Helper functions
+        function addMessage(text, sender, isError = false) {
             const div = document.createElement("div");
             div.className = `message ${sender}`;
+            if (isError) {
+                div.classList.add('error-message');
+            }
             div.textContent = text;
             messagesDiv.appendChild(div);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
+        
+        function addLoadingMessage() {
+            const div = document.createElement("div");
+            div.className = "message bot loading";
+            div.textContent = "Processing...";
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return div;
+        }
+        
+        function removeLoadingMessage(loadingElement) {
+            if (loadingElement && loadingElement.parentNode) {
+                loadingElement.parentNode.removeChild(loadingElement);
+            }
+        }
+        
+        function setButtonsState(enabled) {
+            sendBtn.disabled = !enabled;
+            sendImageBtn.disabled = !enabled;
+        }
+        
+        function clearImageSelection() {
+            imageInput.value = '';
+            imagePreview.innerHTML = '';
+            selectedFile = null;
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            input.focus();
+        });
     </script>
+    {% endblock %}
 </body>
 </html>
