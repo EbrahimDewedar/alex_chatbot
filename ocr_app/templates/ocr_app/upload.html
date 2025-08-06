@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OCR Image Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
+        .container { max-width: 500px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        .result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; min-height: 60px; }
+        .error { color: #b00; margin-top: 10px; }
+        input[type="file"] { margin-bottom: 15px; }
+        button { background: #007bff; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        button:disabled { background: #aaa; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Upload Image for OCR</h2>
+    <form id="uploadForm">
+        <input type="file" id="imageInput" name="image" accept="image/*" required><br>
+        <button type="submit">Upload & Extract Text</button>
+    </form>
+    <div class="error" id="errorMsg"></div>
+    <div class="result" id="resultText"></div>
+</div>
+<script>
+    const form = document.getElementById('uploadForm');
+    const resultText = document.getElementById('resultText');
+    const errorMsg = document.getElementById('errorMsg');
+    form.onsubmit = async function(e) {
+        e.preventDefault();
+        resultText.textContent = '';
+        errorMsg.textContent = '';
+        const fileInput = document.getElementById('imageInput');
+        if (!fileInput.files.length) {
+            errorMsg.textContent = 'Please select an image.';
+            return;
+        }
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        try {
+            const response = await fetch('/ocr/upload/', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success) {
+                resultText.textContent = data.extracted_text;
+            } else {
+                errorMsg.textContent = data.error || 'Extraction failed.';
+            }
+        } catch (err) {
+            errorMsg.textContent = 'An error occurred while uploading.';
+        }
+    };
+</script>
+</body>
+</html>
