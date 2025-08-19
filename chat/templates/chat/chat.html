@@ -2,118 +2,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>{% block title %}ITI Alex Chatbot{% endblock %}</title>
     {% block extra_css %}
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #f4f4f4; 
-            margin: 20px; 
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            margin: 20px;
         }
-        
-        #chat-box { 
-            width: 100%; 
-            max-width: 600px; 
-            margin: auto; 
-            background: #fff; 
-            padding: 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        #chat-box {
+            width: 100%;
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         }
-        
-        .message { 
-            padding: 8px; 
-            margin: 5px 0; 
-            border-radius: 5px; 
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 8px;
         }
-        
-        .user { 
-            background: #d1e7dd; 
-            text-align: right; 
+
+        .message {
+            padding: 8px 10px;
+            margin: 6px 0;
+            border-radius: 6px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-width: 100%;
         }
-        
-        .bot { 
-            background: #f8d7da; 
-            text-align: left; 
+
+        .user {
+            background: #d1e7dd;
+            text-align: right;
+            align-self: flex-end;
         }
-        
+
+        .bot {
+            background: #f8f9fa;
+            text-align: left;
+            border: 1px solid #eee;
+        }
+
         #messages {
-            height: 400px;
+            height: 420px;
             overflow-y: auto;
             border: 1px solid #ddd;
-            padding: 10px;
+            padding: 12px;
             margin: 15px 0;
-            border-radius: 5px;
+            border-radius: 6px;
             background-color: #fafafa;
-        }
-        
-        #input-section { 
-            display: flex; 
+            display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 6px;
         }
-        
+
+        #input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
         .input-row {
             display: flex;
             gap: 10px;
             align-items: center;
         }
-        
-        #message-input { 
-            flex: 1; 
-            padding: 10px; 
+
+        #message-input {
+            flex: 1;
+            padding: 10px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 14px;
         }
-        
-        #image-input {
+
+        #file-input {
             padding: 8px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        #send-btn, #send-file-btn {
+            padding: 10px 15px;
+            background: #0d6efd;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
             font-size: 14px;
         }
-        
-        #send-btn, #send-image-btn { 
-            padding: 10px 15px; 
-            background: #0d6efd; 
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        #send-btn:hover, #send-image-btn:hover {
+
+        #send-btn:hover, #send-file-btn:hover {
             background: #0b5ed7;
         }
-        
-        #send-btn:disabled, #send-image-btn:disabled {
+
+        #send-btn:disabled, #send-file-btn:disabled {
             background: #6c757d;
             cursor: not-allowed;
         }
-        
+
         .loading {
             color: #666;
             font-style: italic;
         }
-        
+
         .image-preview {
             max-width: 200px;
             max-height: 200px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            margin: 10px 0;
+            margin: 8px 0;
+            display: block;
         }
-        
+
         .upload-info {
             font-size: 12px;
             color: #666;
             margin-top: 5px;
         }
-        
+
         .error-message {
             background: #f8d7da;
             color: #721c24;
@@ -122,6 +138,20 @@
             border-radius: 4px;
             margin: 5px 0;
         }
+
+        .file-meta {
+            font-size: 13px;
+            color: #333;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            background: #fff;
+        }
+
+        @media (max-width: 640px) {
+            #chat-box { padding: 12px; }
+            #messages { height: 360px; }
+        }
     </style>
     {% endblock %}
 </head>
@@ -129,50 +159,51 @@
     {% block content %}
     <div id="chat-box">
         <h2>{% block header %}ITI Alex Chatbot{% endblock %}</h2>
-        
-        <div id="messages">
+
+        <div id="messages" aria-live="polite">
             <div class="message bot">
-                Welcome! I can help you with text conversations and extract text from images. 
-                You can type a message or upload an image containing text.
+                Welcome! I can help with text conversations and extracting text from files (images, PDF, DOCX, XLSX, CSV, TXT...).<br>
+                Type a message, upload a file, or both.
             </div>
         </div>
-        
+
         <div id="input-section">
             <!-- Text input row -->
             <div class="input-row">
-                <input 
-                    type="text" 
-                    id="message-input" 
-                    placeholder="Ask me something..." 
-                    maxlength="1000"
+                <input
+                    type="text"
+                    id="message-input"
+                    placeholder="Ask me something... (optional when uploading a file)"
+                    maxlength="2000"
+                    autocomplete="off"
                 />
                 <button id="send-btn">Send</button>
             </div>
-            
-            <!-- Image input row -->
+
+            <!-- File input row -->
             <div class="input-row">
-                <input 
-                    type="file" 
-                    id="image-input" 
-                    accept="image/*"
-                    title="Upload an image to extract text from it"
+                <input
+                    type="file"
+                    id="file-input"
+                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    title="Upload an image or document to extract text from it"
                 />
-                <button id="send-image-btn">Extract Text</button>
+                <button id="send-file-btn">Upload & Extract</button>
             </div>
-            
+
             <div class="upload-info">
-                Upload JPG, PNG, or other image formats containing text
+                Upload JPG, PNG, PDF, DOCX, XLSX, CSV or TXT. Max file size: 5 MB.
             </div>
-            
-            <!-- Image preview container -->
-            <div id="image-preview"></div>
+
+            <!-- File preview / info -->
+            <div id="file-preview"></div>
         </div>
     </div>
     {% endblock %}
 
     {% block extra_js %}
     <script>
-        // Django CSRF token handling
+        // CSRF token helper (Django)
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -187,24 +218,23 @@
             }
             return cookieValue;
         }
-        
         const csrftoken = getCookie('csrftoken');
-        
+
         // DOM elements
         const messagesDiv = document.getElementById("messages");
         const input = document.getElementById("message-input");
         const sendBtn = document.getElementById("send-btn");
-        const imageInput = document.getElementById("image-input");
-        const sendImageBtn = document.getElementById("send-image-btn");
-        const imagePreview = document.getElementById("image-preview");
-        
+        const fileInput = document.getElementById("file-input");
+        const sendFileBtn = document.getElementById("send-file-btn");
+        const filePreview = document.getElementById("file-preview");
+
         let selectedFile = null;
 
         // Event listeners
         sendBtn.addEventListener("click", sendMessage);
-        sendImageBtn.addEventListener("click", sendImage);
-        imageInput.addEventListener("change", handleImageSelect);
-        
+        sendFileBtn.addEventListener("click", sendFile);
+        fileInput.addEventListener("change", handleFileSelect);
+
         // Enter key support for text input
         input.addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
@@ -212,51 +242,96 @@
             }
         });
 
-        // Handle image selection and preview
-        function handleImageSelect(event) {
-            const file = event.target.files[0];
-            selectedFile = file;
-            
-            if (file) {
-                // Validate file size (max 5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    addMessage("Error: Image size must be less than 5MB", "bot", true);
-                    imageInput.value = '';
-                    selectedFile = null;
-                    return;
-                }
-                
-                // Show preview
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imagePreview.innerHTML = `
-                        <img src="${e.target.result}" alt="Image preview" class="image-preview">
-                        <div style="font-size: 12px; color: #666;">
-                            Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)
-                        </div>
-                    `;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                imagePreview.innerHTML = '';
+        // Helper: add a message element
+        function addMessage(text, sender, isError = false) {
+            const div = document.createElement("div");
+            div.className = `message ${sender}`;
+            if (isError) {
+                div.classList.add('error-message');
+            }
+            // Preserve newlines
+            div.textContent = text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Helper: show loading message element
+        function addLoadingMessage() {
+            const div = document.createElement("div");
+            div.className = "message bot loading";
+            div.textContent = "Processing...";
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return div;
+        }
+
+        function removeLoadingMessage(loadingElement) {
+            if (loadingElement && loadingElement.parentNode) {
+                loadingElement.parentNode.removeChild(loadingElement);
             }
         }
 
-        // Send text message
+        function setButtonsState(enabled) {
+            sendBtn.disabled = !enabled;
+            sendFileBtn.disabled = !enabled;
+        }
+
+        // Handle file selection and preview
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            selectedFile = file;
+
+            if (file) {
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    addMessage("Error: File size must be less than 5MB", "bot", true);
+                    fileInput.value = '';
+                    selectedFile = null;
+                    filePreview.innerHTML = '';
+                    return;
+                }
+
+                // Show preview differently for images vs other files
+                if (file.type && file.type.startsWith("image/")) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        filePreview.innerHTML = `
+                            <img src="${e.target.result}" alt="Image preview" class="image-preview">
+                            <div class="file-meta">
+                                Selected: ${escapeHtml(file.name)} — ${(file.size / 1024).toFixed(1)} KB
+                            </div>
+                        `;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    filePreview.innerHTML = `
+                        <div class="file-meta">
+                            <strong>Selected file</strong><br>
+                            ${escapeHtml(file.name)}<br>
+                            <span style="font-size:12px; color:#666;">Type: ${escapeHtml(file.type || 'unknown')} — ${(file.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                    `;
+                }
+            } else {
+                filePreview.innerHTML = '';
+            }
+        }
+
+        // Send a plain text message (no file)
         async function sendMessage() {
             const message = input.value.trim();
             if (!message) return;
 
             addMessage(message, "user");
             input.value = "";
-            
+
             const loadingMsg = addLoadingMessage();
             setButtonsState(false);
 
             try {
                 const response = await fetch("{% url 'chat:chat_api' %}", {
                     method: "POST",
-                    headers: { 
+                    headers: {
                         "Content-Type": "application/json",
                         "X-CSRFToken": csrftoken
                     },
@@ -265,7 +340,7 @@
 
                 const data = await response.json();
                 removeLoadingMessage(loadingMsg);
-                
+
                 if (data.response) {
                     addMessage(data.response, "bot");
                 } else if (data.error) {
@@ -280,31 +355,30 @@
                 setButtonsState(true);
             }
         }
-        
-        // Send image for OCR
-        async function sendImage() {
+
+        // Send file (with optional message)
+        async function sendFile() {
             if (!selectedFile) {
-                addMessage("Please select an image first", "bot", true);
+                addMessage("Please select a file first", "bot", true);
                 return;
             }
-            
+
             const additionalMessage = input.value.trim();
-            
-            // Show what we're processing
+
             if (additionalMessage) {
-                addMessage(`[Image uploaded] ${additionalMessage}`, "user");
+                addMessage(`[File uploaded] ${additionalMessage}`, "user");
                 input.value = "";
             } else {
-                addMessage("[Image uploaded for text extraction]", "user");
+                addMessage("[File uploaded for text extraction]", "user");
             }
-            
+
             const loadingMsg = addLoadingMessage();
             setButtonsState(false);
 
             try {
-                // Create FormData for file upload
                 const formData = new FormData();
-                formData.append('image', selectedFile);
+                // backend accepts 'file' or legacy 'image'
+                formData.append('file', selectedFile);
                 if (additionalMessage) {
                     formData.append('message', additionalMessage);
                 }
@@ -313,72 +387,50 @@
                     method: "POST",
                     headers: {
                         "X-CSRFToken": csrftoken
-                        // Note: Don't set Content-Type for FormData, browser will set it automatically
+                        // DO NOT set Content-Type; browser will set multipart boundary
                     },
                     body: formData
                 });
 
                 const data = await response.json();
                 removeLoadingMessage(loadingMsg);
-                
+
                 if (data.response) {
                     addMessage(data.response, "bot");
                 } else if (data.error) {
                     addMessage("Error: " + data.error, "bot", true);
                 } else {
-                    addMessage("Sorry, I couldn't process the image.", "bot", true);
+                    addMessage("Sorry, I couldn't process the file.", "bot", true);
                 }
-                
-                // Clear image selection
-                clearImageSelection();
-                
+
+                clearFileSelection();
             } catch (error) {
                 removeLoadingMessage(loadingMsg);
-                addMessage("Network error during image processing. Please try again.", "bot", true);
+                addMessage("Network error during file processing. Please try again.", "bot", true);
             } finally {
                 setButtonsState(true);
             }
         }
 
-        // Helper functions
-        function addMessage(text, sender, isError = false) {
-            const div = document.createElement("div");
-            div.className = `message ${sender}`;
-            if (isError) {
-                div.classList.add('error-message');
-            }
-            div.textContent = text;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-        
-        function addLoadingMessage() {
-            const div = document.createElement("div");
-            div.className = "message bot loading";
-            div.textContent = "Processing...";
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            return div;
-        }
-        
-        function removeLoadingMessage(loadingElement) {
-            if (loadingElement && loadingElement.parentNode) {
-                loadingElement.parentNode.removeChild(loadingElement);
-            }
-        }
-        
-        function setButtonsState(enabled) {
-            sendBtn.disabled = !enabled;
-            sendImageBtn.disabled = !enabled;
-        }
-        
-        function clearImageSelection() {
-            imageInput.value = '';
-            imagePreview.innerHTML = '';
+        function clearFileSelection() {
+            fileInput.value = '';
+            filePreview.innerHTML = '';
             selectedFile = null;
         }
-        
-        // Initialize
+
+        // Small utility to escape HTML when injecting filenames
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // Focus the input on page load
         document.addEventListener('DOMContentLoaded', function() {
             input.focus();
         });
