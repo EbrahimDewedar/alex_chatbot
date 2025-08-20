@@ -1,4 +1,4 @@
-# chat/views.py - Updated to support general file uploads (pdf, docx, xlsx, csv, txt) + images via vision models
+# chat/views.py - Updated to support frontend model selection
 import os
 import json
 import requests
@@ -12,6 +12,22 @@ from dotenv import load_dotenv
 from django.shortcuts import render
 
 load_dotenv()
+
+# --------------------
+# Model lists (single authoritative place)
+# --------------------
+VISION_MODELS = [
+    "meta-llama/Llama-3.2-11B-Vision-Instruct",
+    "Qwen/Qwen2.5-VL-7B-Instruct",
+    "Qwen/Qwen2.5-VL-32B-Instruct",
+    "CohereLabs/aya-vision-8b"
+]
+
+TEXT_MODELS = [
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "deepseek-ai/DeepSeek-V3-0324",
+    "Qwen/Qwen2.5-7B-Instruct"
+]
 
 # Optional libraries - import safely and handle missing packages gracefully
 try:
@@ -29,9 +45,16 @@ try:
 except Exception:
     openpyxl = None
 
-# keep existing chat page
+
 def chat_page(request):
-    return render(request, "chat/chat.html")
+    """
+    Render chat page and pass model lists so front-end can populate the dropdown.
+    """
+    context = {
+        "vision_models": VISION_MODELS,
+        "text_models": TEXT_MODELS,
+    }
+    return render(request, "chat/chat.html", context)
 
 
 @csrf_exempt
@@ -40,29 +63,33 @@ def chat_view(request):
         return JsonResponse({"error": "Only POST allowed"}, status=405)
 
     try:
-        # Handle both text and file uploads
+        # Determine model param from request (multipart or JSON)
+        selected_model = None
+
         if request.content_type and request.content_type.startswith('multipart/form-data'):
             # File upload case
             message = request.POST.get('message', '').strip()
+            selected_model = request.POST.get('model', '').strip() or None
             uploaded_file = request.FILES.get('file') or request.FILES.get('image')  # accept both 'file' and legacy 'image'
 
             if uploaded_file:
-                return handle_uploaded_file(uploaded_file, message)
+                return handle_uploaded_file(uploaded_file, message, selected_model)
             elif message:
-                return handle_text_message(message)
+                return handle_text_message(message, selected_model)
             else:
                 return JsonResponse({"error": "No message or file provided"}, status=400)
         else:
             # JSON text message or base64 image case
             data = json.loads(request.body)
             message = data.get("message", "").strip()
+            selected_model = data.get("model", None)
 
             # Check if there's base64 image data
             image_data = data.get("image")
             if image_data:
-                return handle_base64_image_ocr(image_data, message)
+                return handle_base64_image_ocr(image_data, message, selected_model)
             elif message:
-                return handle_text_message(message)
+                return handle_text_message(message, selected_model)
             else:
                 return JsonResponse({"error": "No message provided"}, status=400)
 
@@ -73,10 +100,11 @@ def chat_view(request):
         return JsonResponse({"error": "Internal server error"}, status=500)
 
 
-def handle_uploaded_file(uploaded_file, message=""):
+def handle_uploaded_file(uploaded_file, message="", model=None):
     """
     Dispatch uploaded file to the appropriate extractor.
     Accepts images (delegates to Vision LLMs) and documents (pdf, docx, xlsx, csv, txt).
+    model: string (model name) or None = auto
     """
     try:
         # Basic size limit (5MB) - adjust as needed
@@ -92,9 +120,8 @@ def handle_uploaded_file(uploaded_file, message=""):
 
         # If it's an image, use the vision LLM path
         if content_type.startswith("image/") or filename.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif")):
-            # present as base64 to vision models
             image_base64 = base64.b64encode(file_bytes).decode("utf-8")
-            extracted_text = extract_text_with_vision_models(image_base64, message)
+            extracted_text = extract_text_with_vision_models(image_base64, message, model)
             if extracted_text:
                 return JsonResponse({"response": extracted_text})
             else:
@@ -109,7 +136,6 @@ def handle_uploaded_file(uploaded_file, message=""):
                 except Exception:
                     text = None
             if text:
-                # If user included a question, append answer from LLMs maybe — for now return extracted text.
                 return JsonResponse({"response": text})
             else:
                 return JsonResponse({"response": "Could not decode text file."}, status=400)
@@ -118,7 +144,6 @@ def handle_uploaded_file(uploaded_file, message=""):
         elif filename.lower().endswith(".csv") or content_type == "text/csv":
             try:
                 decoded = file_bytes.decode("utf-8", errors="replace")
-                # keep first N lines to avoid huge response
                 lines = decoded.splitlines()
                 preview = "\n".join(lines[:200])
                 return JsonResponse({"response": preview})
@@ -174,7 +199,6 @@ def extract_text_from_pdf_bytes(file_bytes):
             except Exception:
                 continue
         combined = "\n\n".join(texts).strip()
-        # return a preview if too long
         return combined if len(combined) < 20000 else combined[:20000] + "\n\n[truncated]"
     except Exception as e:
         print("PDF extraction error:", e)
@@ -189,7 +213,6 @@ def extract_text_from_docx_bytes(file_bytes):
     try:
         doc = DocxDocument(io.BytesIO(file_bytes))
         paragraphs = [p.text for p in doc.paragraphs if p.text]
-        # Also attempt to read tables
         for table in doc.tables:
             for row in table.rows:
                 row_text = " | ".join(cell.text for cell in row.cells)
@@ -214,10 +237,8 @@ def extract_text_from_xlsx_bytes(file_bytes):
             row_count = 0
             for row in sheet.iter_rows(values_only=True):
                 row_count += 1
-                # join values, convert None to empty string
                 row_str = ", ".join([str(cell) if cell is not None else "" for cell in row])
                 texts.append(row_str)
-                # limit lines to avoid huge responses
                 if row_count >= 200:
                     texts.append("[sheet truncated]")
                     break
@@ -229,19 +250,19 @@ def extract_text_from_xlsx_bytes(file_bytes):
 
 
 # -------------------------
-# Existing vision model OCR (unchanged except minor adaptations)
+# Existing vision model OCR (adapted to accept specific model)
 # -------------------------
-def extract_text_with_vision_models(image_base64, user_message=""):
-    """Extract text from image using Vision Language Models"""
+def extract_text_with_vision_models(image_base64, user_message="", requested_model=None):
+    """Extract text from image using Vision Language Models.
+    If requested_model is provided and not 'auto', only try that model.
+    """
     token = os.getenv("HUGGINGFACE_TOKEN")
 
-    # Try different Vision Language Models available on Inference Providers
-    vision_models = [
-        "meta-llama/Llama-3.2-11B-Vision-Instruct",
-        "Qwen/Qwen2.5-VL-7B-Instruct",
-        "Qwen/Qwen2.5-VL-32B-Instruct",
-        "CohereLabs/aya-vision-8b"
-    ]
+    # Determine which vision models to try
+    if requested_model and requested_model.lower() != "auto":
+        models_to_try = [requested_model]
+    else:
+        models_to_try = VISION_MODELS
 
     # Create the prompt for OCR
     if user_message:
@@ -249,32 +270,22 @@ def extract_text_with_vision_models(image_base64, user_message=""):
     else:
         prompt = "Please extract and transcribe all the readable text from this image. Be as accurate as possible and maintain the original formatting when possible."
 
-    for model_name in vision_models:
+    for model_name in models_to_try:
         try:
             print(f"Trying Vision Model: {model_name}")
 
-            # Use the new Inference Providers API
             api_url = "https://router.huggingface.co/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json"
             }
 
-            # Prepare the message with image
             messages = [
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_base64}"
-                            }
-                        }
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
                     ]
                 }
             ]
@@ -283,42 +294,34 @@ def extract_text_with_vision_models(image_base64, user_message=""):
                 "model": model_name,
                 "messages": messages,
                 "max_tokens": 500,
-                "temperature": 0.1  # Low temperature for more accurate text extraction
+                "temperature": 0.1
             }
 
             response = requests.post(api_url, headers=headers, json=payload, timeout=45)
-
             print(f"Vision Model {model_name} status: {response.status_code}")
 
             if response.status_code == 200:
                 result = response.json()
                 print(f"Vision Model Success! Raw result: {result}")
-
                 if "choices" in result and len(result["choices"]) > 0:
                     extracted_text = result["choices"][0]["message"]["content"]
-
                     if extracted_text and len(extracted_text.strip()) > 5:
-                        print(f"Extracted text: {extracted_text[:200]}...")
                         return extracted_text.strip()
 
             elif response.status_code == 400:
-                error_info = response.json() if response.text else {}
+                try:
+                    error_info = response.json() if response.text else {}
+                except Exception:
+                    error_info = {}
                 print(f"Vision Model {model_name} bad request: {error_info}")
-
-                # Try simpler format if the complex format fails
                 if "image_url" in str(error_info):
                     print(f"Trying simpler format for {model_name}")
                     return try_simple_vision_format(model_name, image_base64, prompt, token)
                 continue
 
-            elif response.status_code == 404:
-                print(f"Vision Model {model_name} not found, trying next...")
+            elif response.status_code in (404, 503):
+                print(f"Vision Model {model_name} returned {response.status_code}, trying next...")
                 continue
-
-            elif response.status_code == 503:
-                print(f"Vision Model {model_name} is loading, trying next...")
-                continue
-
             else:
                 error_text = response.text[:200] if response.text else "No error details"
                 print(f"Vision Model {model_name} error {response.status_code}: {error_text}")
@@ -343,12 +346,11 @@ def try_simple_vision_format(model_name, image_base64, prompt, token):
             "Content-Type": "application/json"
         }
 
-        # Simpler message format
         messages = [
             {
                 "role": "user",
                 "content": f"{prompt}\n\n[Image provided as base64 data]",
-                "image": image_base64  # Some models might expect this format
+                "image": image_base64
             }
         ]
 
@@ -376,46 +378,39 @@ def try_simple_vision_format(model_name, image_base64, prompt, token):
         return None
 
 
-def handle_base64_image_ocr(image_data, message=""):
+def handle_base64_image_ocr(image_data, message="", model=None):
     """Handle OCR processing of base64 encoded image"""
     try:
         print("Processing base64 image data")
-
-        # Remove data URL prefix if present
         if image_data.startswith('data:image'):
             image_data = image_data.split(',')[1]
 
-        extracted_text = extract_text_with_vision_models(image_data, message)
+        extracted_text = extract_text_with_vision_models(image_data, message, model)
 
         if extracted_text:
             return JsonResponse({"response": extracted_text})
         else:
-            return JsonResponse({
-                "response": "No readable text found in the image."
-            })
+            return JsonResponse({"response": "No readable text found in the image."})
 
     except Exception as e:
         print(f"Base64 OCR Error: {e}")
         return JsonResponse({"error": "Failed to process image data"}, status=500)
 
 
-def handle_text_message(message):
-    """Handle regular text message (existing chat functionality)"""
+def handle_text_message(message, requested_model=None):
+    """Handle regular text message (existing chat functionality), optionally using requested_model"""
     try:
-        print(f"Processing text message: '{message}'")
+        print(f"Processing text message: '{message}' with model={requested_model}")
         token = os.getenv("HUGGINGFACE_TOKEN")
 
         api_url = "https://router.huggingface.co/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-        models_to_try = [
-            "meta-llama/Llama-3.1-8B-Instruct",
-            "deepseek-ai/DeepSeek-V3-0324",
-            "Qwen/Qwen2.5-7B-Instruct"
-        ]
+        # Choose models to try: either the single requested_model or the default list
+        if requested_model and requested_model.lower() != "auto":
+            models_to_try = [requested_model]
+        else:
+            models_to_try = TEXT_MODELS
 
         for model_name in models_to_try:
             try:
@@ -443,9 +438,7 @@ def handle_text_message(message):
             except Exception:
                 continue
 
-        return JsonResponse({
-            "response": "I'm currently experiencing technical difficulties. Please try again in a moment."
-        })
+        return JsonResponse({"response": "I'm currently experiencing technical difficulties. Please try again in a moment."})
 
     except Exception as e:
         print(f"Text message error: {e}")

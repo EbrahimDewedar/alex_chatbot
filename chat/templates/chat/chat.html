@@ -7,151 +7,28 @@
     <title>{% block title %}ITI Alex Chatbot{% endblock %}</title>
     {% block extra_css %}
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            margin: 20px;
-        }
-
-        #chat-box {
-            width: 100%;
-            max-width: 800px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }
-
-        h2 {
-            margin-top: 0;
-            margin-bottom: 8px;
-        }
-
-        .message {
-            padding: 8px 10px;
-            margin: 6px 0;
-            border-radius: 6px;
-            line-height: 1.4;
-            white-space: pre-wrap;
-            word-break: break-word;
-            max-width: 100%;
-        }
-
-        .user {
-            background: #d1e7dd;
-            text-align: right;
-            align-self: flex-end;
-        }
-
-        .bot {
-            background: #f8f9fa;
-            text-align: left;
-            border: 1px solid #eee;
-        }
-
-        #messages {
-            height: 420px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 6px;
-            background-color: #fafafa;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        #input-section {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .input-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        #message-input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        #file-input {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-        }
-
-        #send-btn, #send-file-btn {
-            padding: 10px 15px;
-            background: #0d6efd;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        #send-btn:hover, #send-file-btn:hover {
-            background: #0b5ed7;
-        }
-
-        #send-btn:disabled, #send-file-btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-
-        .loading {
-            color: #666;
-            font-style: italic;
-        }
-
-        .image-preview {
-            max-width: 200px;
-            max-height: 200px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin: 8px 0;
-            display: block;
-        }
-
-        .upload-info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            padding: 8px;
-            border-radius: 4px;
-            margin: 5px 0;
-        }
-
-        .file-meta {
-            font-size: 13px;
-            color: #333;
-            padding: 6px;
-            border-radius: 4px;
-            border: 1px solid #eee;
-            background: #fff;
-        }
-
-        @media (max-width: 640px) {
-            #chat-box { padding: 12px; }
-            #messages { height: 360px; }
-        }
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 20px; }
+        #chat-box { width: 100%; max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        h2 { margin-top: 0; margin-bottom: 8px; }
+        .message { padding: 8px 10px; margin: 6px 0; border-radius: 6px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; max-width: 100%; }
+        .user { background: #d1e7dd; text-align: right; align-self: flex-end; }
+        .bot { background: #f8f9fa; text-align: left; border: 1px solid #eee; }
+        #messages { height: 420px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; margin: 15px 0; border-radius: 6px; background-color: #fafafa; display: flex; flex-direction: column; gap: 6px; }
+        #input-section { display: flex; flex-direction: column; gap: 12px; }
+        .input-row { display: flex; gap: 10px; align-items: center; }
+        #message-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        #file-input { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: white; }
+        #send-btn, #send-file-btn { padding: 10px 15px; background: #0d6efd; color: white; border: none; cursor: pointer; border-radius: 6px; font-size: 14px; }
+        #send-btn:hover, #send-file-btn:hover { background: #0b5ed7; }
+        #send-btn:disabled, #send-file-btn:disabled { background: #6c757d; cursor: not-allowed; }
+        .loading { color: #666; font-style: italic; }
+        .image-preview { max-width: 200px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px; margin: 8px 0; display: block; }
+        .upload-info { font-size: 12px; color: #666; margin-top: 5px; }
+        .error-message { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 5px 0; }
+        .file-meta { font-size: 13px; color: #333; padding: 6px; border-radius: 4px; border: 1px solid #eee; background: #fff; }
+        #model-select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; background: white; }
+        .small-note { font-size: 12px; color: #666; margin-top: 4px; }
+        @media (max-width: 640px) { #chat-box { padding: 12px; } #messages { height: 360px; } }
     </style>
     {% endblock %}
 </head>
@@ -163,39 +40,49 @@
         <div id="messages" aria-live="polite">
             <div class="message bot">
                 Welcome! I can help with text conversations and extracting text from files (images, PDF, DOCX, XLSX, CSV, TXT...).<br>
-                Type a message, upload a file, or both.
+                Type a message, upload a file, or both. Choose a model from the selector below (or leave "Auto").
             </div>
         </div>
 
         <div id="input-section">
+            <!-- Model selector row -->
+            <div class="input-row" style="align-items:center;">
+                <label for="model-select" style="margin-right:8px;">Model:</label>
+                <select id="model-select" title="Choose model (Auto uses default model lists)">
+                    <option value="auto">Auto (default)</option>
+
+                    {% if vision_models %}
+                    <optgroup label="Vision Models">
+                        {% for m in vision_models %}
+                        <option value="{{ m }}">{{ m }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endif %}
+
+                    {% if text_models %}
+                    <optgroup label="Text Models">
+                        {% for m in text_models %}
+                        <option value="{{ m }}">{{ m }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endif %}
+                </select>
+                <div class="small-note" style="margin-left:12px;">Pick a model to try it directly.</div>
+            </div>
+
             <!-- Text input row -->
             <div class="input-row">
-                <input
-                    type="text"
-                    id="message-input"
-                    placeholder="Ask me something... (optional when uploading a file)"
-                    maxlength="2000"
-                    autocomplete="off"
-                />
+                <input type="text" id="message-input" placeholder="Ask me something... (optional when uploading a file)" maxlength="2000" autocomplete="off" />
                 <button id="send-btn">Send</button>
             </div>
 
             <!-- File input row -->
             <div class="input-row">
-                <input
-                    type="file"
-                    id="file-input"
-                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    title="Upload an image or document to extract text from it"
-                />
+                <input type="file" id="file-input" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" title="Upload an image or document to extract text from it" />
                 <button id="send-file-btn">Upload & Extract</button>
             </div>
 
-            <div class="upload-info">
-                Upload JPG, PNG, PDF, DOCX, XLSX, CSV or TXT. Max file size: 5 MB.
-            </div>
-
-            <!-- File preview / info -->
+            <div class="upload-info">Upload JPG, PNG, PDF, DOCX, XLSX, CSV or TXT. Max file size: 5 MB.</div>
             <div id="file-preview"></div>
         </div>
     </div>
@@ -227,6 +114,7 @@
         const fileInput = document.getElementById("file-input");
         const sendFileBtn = document.getElementById("send-file-btn");
         const filePreview = document.getElementById("file-preview");
+        const modelSelect = document.getElementById("model-select");
 
         let selectedFile = null;
 
@@ -246,10 +134,7 @@
         function addMessage(text, sender, isError = false) {
             const div = document.createElement("div");
             div.className = `message ${sender}`;
-            if (isError) {
-                div.classList.add('error-message');
-            }
-            // Preserve newlines
+            if (isError) div.classList.add('error-message');
             div.textContent = text;
             messagesDiv.appendChild(div);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -291,15 +176,12 @@
                     return;
                 }
 
-                // Show preview differently for images vs other files
                 if (file.type && file.type.startsWith("image/")) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         filePreview.innerHTML = `
                             <img src="${e.target.result}" alt="Image preview" class="image-preview">
-                            <div class="file-meta">
-                                Selected: ${escapeHtml(file.name)} — ${(file.size / 1024).toFixed(1)} KB
-                            </div>
+                            <div class="file-meta">Selected: ${escapeHtml(file.name)} — ${(file.size / 1024).toFixed(1)} KB</div>
                         `;
                     };
                     reader.readAsDataURL(file);
@@ -329,13 +211,15 @@
             setButtonsState(false);
 
             try {
+                const payload = { message: message, model: modelSelect.value || "auto" };
+
                 const response = await fetch("{% url 'chat:chat_api' %}", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRFToken": csrftoken
                     },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
@@ -379,9 +263,9 @@
                 const formData = new FormData();
                 // backend accepts 'file' or legacy 'image'
                 formData.append('file', selectedFile);
-                if (additionalMessage) {
-                    formData.append('message', additionalMessage);
-                }
+                if (additionalMessage) formData.append('message', additionalMessage);
+                // include model selection
+                formData.append('model', modelSelect.value || "auto");
 
                 const response = await fetch("{% url 'chat:chat_api' %}", {
                     method: "POST",
@@ -420,13 +304,7 @@
 
         // Small utility to escape HTML when injecting filenames
         function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
             return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
